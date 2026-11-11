@@ -18,11 +18,18 @@ def normalize_games(games, team):
         state = game.get("status_state")
         final = state == "final" or (not state and status.startswith("Final"))
         scheduled = state == "scheduled" or (not state and status.endswith(" ET"))
-        if not (final or scheduled) or not game.get("datetime"):
+        in_progress = state == "in_progress" or (not state and (
+            "Qtr" in status or status in ("Halftime", "Overtime") or "OT" in status))
+        if not (final or scheduled or in_progress) or not game.get("datetime"):
             continue
         at = datetime.fromisoformat(game["datetime"].replace("Z", "+00:00")).timestamp()
-        score = f'{game["visitor_team_score"]}–{game["home_team_score"]}' if final else None
-        result.append(dict(at=at, home=home, away=away, score=score))
+        away_score = game.get("visitor_team_score")
+        home_score = game.get("home_team_score")
+        score = None
+        if (final or in_progress) and away_score is not None and home_score is not None:
+            score = f"{away_score}–{home_score}"
+        result.append(dict(at=at, home=home, away=away, score=score,
+                           state="final" if final else "in_progress" if in_progress else "scheduled"))
     return sorted(result, key=lambda game: game["at"])
 
 

@@ -38,8 +38,7 @@ export class Coordinator {
     for (const req of this.active.values()) {
       if (this.pending.has(req.key)) continue;
       const record = this.record(req);
-      if (record?.status === 'unavailable') continue;
-      const due = Math.max((record?.fetched_at ?? -Infinity) + req.age,
+      const due = Math.max((record?.next_refresh ?? (record?.fetched_at ?? -Infinity) + req.age),
         record?.retry_at ?? 0, this.retry.get(req.key) ?? 0);
       if (due <= now) this.refresh(req);
       else next = Math.min(next, due);
@@ -47,19 +46,20 @@ export class Coordinator {
     if (Number.isFinite(next)) this.timer = setTimeout(() => this.scan(), Math.max(10,(next-now)*1000));
   }
 
-  async refresh(req, force = false) {
+  async refresh(req) {
     if (this.paused || !this.active.has(req.key) || this.pending.has(req.key)) return;
     const before = this.record(req);
     if (Math.max(before?.retry_at ?? 0, this.retry.get(req.key) ?? 0) > this.now()/1000) return;
     this.pending.add(req.key);
     this.render();
     try {
-      const response = await this.request('/api/data/' + req.key + '&max_age=' + req.age +
-        '&force=' + force, {signal: AbortSignal.timeout(8000)});
+      const wallpaper = req.kind === 'wallpaper';
+      const url = wallpaper ? '/api/'+req.key : '/api/data/'+req.key+'&max_age='+req.age;
+      const response = await this.request(url,{signal:AbortSignal.timeout(wallpaper ? 15000 : 8000)});
       if (!response.ok) throw new Error('Server unavailable');
       const incoming = await response.json();
       const result = incoming.payload === undefined && before?.payload !== undefined
-        ? {...before, status:incoming.status, error:incoming.error, retry_at:incoming.retry_at}
+        ? {...before, status:incoming.status, error:incoming.error, retry_at:incoming.retry_at, next_refresh:incoming.next_refresh ?? before.next_refresh}
         : incoming;
       this.records.set(req.key, result);
       if (result.payload !== undefined) {
@@ -68,7 +68,14 @@ export class Coordinator {
           save('cache', Object.fromEntries([...cached.slice(-23), [req.key,result]]));
         } catch { /* Storage quota does not discard the in-memory record. */ }
       }
-      this.retry.delete(req.key);
+      const now = this.now()/1000;
+      if (result.status === 'unavailable') {
+        this.retry.set(req.key, now + req.age);
+      } else if ((result.fetched_at ?? -Infinity) + req.age <= now && !(result.retry_at > now)) {
+        this.retry.set(req.key, now + 30);
+      } else {
+        this.retry.delete(req.key);
+      }
     } catch {
       this.records.set(req.key, {...before, status:'offline', error:'Local server unreachable'});
       this.retry.set(req.key, this.now()/1000 + 30);

@@ -62,3 +62,21 @@ Desktop Chrome was checked at 1280 × 720 for Home layout, navigation, timer cre
 ### Screen layout rule
 
 At 1280 × 720, information screens should keep their headings, primary data and controls within one viewport. Group related information into cards and use paging for lists that can exceed the available space.
+
+### ASX quotes
+
+The Home clock strip supports EODHD delayed ASX quotes for WOW.AU, WDS.AU and VHY.AU. Set EODHD_API_TOKEN in the server environment before launching, and choose the ASX shares provider in Settings. The strip defaults to live quotes and shows the provider quote date. The external feed is typically delayed 15–20 minutes. While Home is active, Pharos checks at six fixed weekday times in Australia/Sydney: 10:00, 11:12, 12:24, 13:36, 14:48 and 16:00. On reopening, it checks only the latest elapsed slot, without replaying missed slots. Each slot can run once across server restarts. The local shares-budget.sqlite3 also caps usage at 18 symbol calls per UTC day. Public holidays use the weekday schedule. That budget and the quote cache survive server restarts. Credentials stay in environment variables. A larger API allowance would permit more frequent checks.
+
+### NASA wallpapers
+
+Open Display, Wallpapers, then Space. Default restores the plain background. NASA Daily uses the current NASA Science APOD feed and chooses the most recent still image. Nebulae, Earth and Planets use NASA Image Library searches. Metadata refreshes daily only while a NASA wallpaper is selected. Images are served from the ignored data/wallpapers directory and retained by the browser for offline use. A failed fetch keeps the last image. NASA Daily uses DEMO_KEY unless NASA_API_KEY is provided in the server environment. Image titles, dates, credits and source links appear on the Space page.
+
+### Kiosk power controls
+
+For Power actions, launch the local server with PHAROS_ENABLE_POWER=1 on Raspberry Pi OS, bound to 127.0.0.1. Run the browser as a user service named pharos-kiosk.service so Exit can stop it and return to the desktop. For a manual test from the Pi desktop, launch it with:
+
+```sh
+systemd-run --user --unit=pharos-kiosk chromium --user-data-dir="$HOME/.config/pharos-kiosk" --kiosk http://127.0.0.1:8765
+```
+
+Shutdown uses systemctl poweroff and requires the server user to be authorized by Raspberry Pi OS. Test both actions on the Pi before relying on them.

@@ -14,6 +14,7 @@ class LiveProviderTests(unittest.TestCase):
         games = [
             dict(base, status_state="scheduled"),
             dict(base, status_state="final", home_team_score=99, visitor_team_score=101),
+            dict(base, status_state="in_progress", home_team_score=52, visitor_team_score=49),
             dict(base, status_state="canceled"),
             dict(base, status_state="scheduled", home_team={"abbreviation": "LAL"}),
         ]
@@ -21,7 +22,7 @@ class LiveProviderTests(unittest.TestCase):
             with patch("nba.get_json", return_value={"data": games}) as fetch:
                 result, source = live_nba({}, 1794293870)
         self.assertIsNone(source)
-        self.assertEqual([game["score"] for game in result], [None, "101–99", None])
+        self.assertEqual([game["score"] for game in result], [None, "101–99", "49–52", None])
         self.assertEqual(result[0]["at"], 1794272400)
         self.assertEqual(fetch.call_args.kwargs["headers"], {"Authorization": "test"})
 

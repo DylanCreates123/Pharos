@@ -12,34 +12,35 @@ test('screen requirements, shared request, freshness and visibility', async () =
     return {ok:true,json:async () => ({payload:[],fetched_at:now/1000,status:'ok'})};
   });
   const flush = () => new Promise(resolve => setImmediate(resolve));
-  const home = requirements('Home',defaults);
-  const detail = requirements('Transport',defaults);
-  coordinator.subscribe('screen',requirements('Timers',defaults));
+  const config = {...defaults,wallpaper:'none'};
+  const home = requirements('Home',config);
+  const detail = requirements('Transport',config);
+  coordinator.subscribe('screen',requirements('Timers',config));
   assert.equal(calls.length,0);
   coordinator.subscribe('screen',home);
   coordinator.subscribe('second',detail);
   await flush();
-  assert.equal(calls.length,3);
+  assert.equal(calls.length,4);
   assert.equal(coordinator.active.get(detail[0].key).age,60);
   coordinator.subscribe('second',[]);
   assert.equal(coordinator.active.get(detail[0].key).age,300);
   coordinator.subscribe('screen',[]);
   coordinator.subscribe('screen',home);
-  assert.equal(calls.length,3);
+  assert.equal(calls.length,4);
 
   coordinator.pause(true);
   coordinator.subscribe('screen',detail);
   now += 600_000;
   coordinator.scan();
-  assert.equal(calls.length,3);
+  assert.equal(calls.length,4);
   coordinator.pause(false);
   await flush();
-  assert.equal(calls.length,4);
-  assert.match(calls[3],/max_age=60/);
+  assert.equal(calls.length,5);
+  assert.match(calls[4],/max_age=60/);
   coordinator.subscribe('screen',[]);
   now += 600_000;
   coordinator.scan();
-  assert.equal(calls.length,4);
+  assert.equal(calls.length,5);
 });
 
 test('timer uses deadline after reload and clock jumps; due times use configured timezone', () => {
